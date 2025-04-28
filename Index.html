@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Evaluador Restaurante</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 900px; margin: auto; }
+    label { font-weight: bold; margin-top: 15px; display: block; }
+    input[type="number"] { width: 100%; padding: 6px; margin-bottom: 10px; }
+    p { margin: 6px 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: right; }
+    th { background-color: #f2f2f2; }
+    td input { width: 60px; }
+  </style>
+</head>
+<body>
+
+<h2>Evaluador de Restaurante</h2>
+
+<label>Ventas diarias (en millones de CLP):
+  <input type="number" id="ventasBase" value="60">
+</label>
+<p>Ventas mensuales con IVA: $<span id="ventasIVA">-</span></p>
+<p>Ventas netas: $<span id="ventasNetas">-</span></p>
+<p>Ventas diarias promedio: $<span id="ventasDiarias">-</span></p>
+
+<label>Inversión inicial (en millones de CLP):
+  <input type="number" id="inversionBase" value="120">
+</label>
+<p>Inversión inicial: $<span id="inversionMonto">-</span></p>
+
+<label>Arriendo mensual (en millones de CLP):
+  <input type="number" id="arriendoBase" value="6">
+</label>
+<p>Arriendo mensual: $<span id="arriendoMonto">-</span> (<span id="porcArriendo">-</span>% de ventas netas)</p>
+
+<label>Remuneraciones (en millones de CLP):
+  <input type="number" id="remuneracionesBase" value="8">
+</label>
+<p>Remuneraciones: $<span id="remuneracionesMonto">-</span> (<span id="porcRemuneraciones">-</span>% de ventas netas)</p>
+
+<!-- Nuevas secciones para editar los porcentajes -->
+<label>% Insumos y producción:
+  <input type="number" id="insumosPct" value="38.5" step="0.1">
+</label>
+
+<label>% Dieta Directorio:
+  <input type="number" id="dietaPct" value="20" step="0.1">
+</label>
+
+<label>% Cuentas de Servicios:
+  <input type="number" id="serviciosPct" value="3" step="0.1">
+</label>
+
+<h3>Gastos calculados</h3>
+<p>Arriendo mensual: $<span id="arriendoGasto">-</span> (<span id="porcArriendoGasto">-</span>% de ventas netas)</p>
+<p>Remuneraciones: $<span id="remuneracionesGasto">-</span> (<span id="porcRemuneracionesGasto">-</span>% de ventas netas)</p>
+<p>Insumos y producción: $<span id="insumos">-</span> (<span id="porcInsumos">-</span>% de ventas netas)</p>
+<p>Dieta Directorio: $<span id="dieta">-</span> (<span id="porcDieta">-</span>% de ventas netas)</p>
+<p>Cuentas de servicios: $<span id="servicios">-</span> (<span id="porcServicios">-</span>% de ventas netas)</p>
+
+<p><strong>Subtotal de gastos calculados:</strong> $<span id="subtotalGastos">-</span></p>
+
+<h3>Resultados</h3>
+<p>Flujo mensual: $<span id="flujoMensual">-</span></p>
+<p>Flujo anual ajustado por estacionalidad: $<span id="flujoAnual">-</span></p>
+<p>Retorno de inversión (ROI): <span id="roi">-</span>%</p>
+<p>Payback: <span id="payback">-</span> meses</p>
+
+<h3>Estacionalidad (editable)</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Mes</th>
+      <th>%</th>
+      <th>Días</th>
+      <th>Flujo mensual ajustado</th>
+      <th>Flujo diario ajustado</th>
+    </tr>
+  </thead>
+  <tbody id="tablaEstacionalidad"></tbody>
+</table>
+
+<script>
+const estacionalidad = [84, 50, 92, 94, 84, 95, 99, 100, 60, 98, 92, 93];
+const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+               'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+const diasPorMes = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+function formatCLP(number) {
+  return Number(Math.round(number)).toLocaleString('es-CL');
+}
+
+function calcular() {
+  const ventasBase = parseFloat(document.getElementById('ventasBase').value) || 0;
+  const inversionBase = parseFloat(document.getElementById('inversionBase').value) || 0;
+  const arriendoBase = parseFloat(document.getElementById('arriendoBase').value) || 0;
+  const remuneracionesBase = parseFloat(document.getElementById('remuneracionesBase').value) || 0;
+  
+  // Nuevos valores para los porcentajes editables
+  const insumosPct = parseFloat(document.getElementById('insumosPct').value) || 38.5;
+  const dietaPct = parseFloat(document.getElementById('dietaPct').value) || 20;
+  const serviciosPct = parseFloat(document.getElementById('serviciosPct').value) || 3;
+
+  const ventasIVA = ventasBase * 1_000_000;
+  const ventasNetas = ventasIVA / 1.19;
+  const ventasDiarias = ventasNetas / 30; // Aproximación para el cálculo de ventas diarias promedio
+  const inversion = inversionBase * 1_000_000;
+  const arriendo = arriendoBase * 1_000_000;
+  const remuneraciones = remuneracionesBase * 1_000_000;
+
+  const insumos = ventasNetas * (insumosPct / 100);
+  const dieta = ventasNetas * (dietaPct / 100);
+  const servicios = ventasNetas * (serviciosPct / 100);
+
+  const totalGastos = insumos + remuneraciones + dieta + servicios + arriendo;
+  const flujoMensual = ventasNetas - totalGastos;
+
+  let flujoAnual = 0;
+  let rows = "";
+
+  estacionalidad.forEach((pct, i) => {
+    const dias = diasPorMes[i];
+    // Aplicar estacionalidad a las ventas netas del mes
+    const ventasMes = ventasNetas * (pct / 100);
+    const flujoMes = ventasMes - (
+      (ventasMes * (insumosPct / 100)) + // Insumos
+      remuneraciones +      // Remuneraciones fijas
+      (ventasMes * (dietaPct / 100)) +   // Dieta
+      (ventasMes * (serviciosPct / 100)) +   // Servicios
+      arriendo              // Arriendo fijo
+    );
+    const flujoDia = flujoMes / dias;
+
+    flujoAnual += flujoMes;
+
+    rows += `  
+      <tr>
+        <td>${meses[i]}</td>
+        <td><input type="number" min="0" max="150" value="${pct}" data-index="${i}" class="input-estacionalidad"></td>
+        <td>${dias}</td>
+        <td>$${formatCLP(flujoMes)}</td>
+        <td>$${formatCLP(flujoDia)}</td>
+      </tr>`;
+  });
+
+  const roi = (flujoAnual / inversion) * 100;
+  const payback = inversion / flujoMensual;
+  const arriendoPct = (arriendo / ventasNetas) * 100;
+  const remuneracionesPct = (remuneraciones / ventasNetas) * 100;
+  const insumosPctCalculated = (insumos / ventasNetas) * 100;
+  const dietaPctCalculated = (dieta / ventasNetas) * 100;
+  const serviciosPctCalculated = (servicios / ventasNetas) * 100;
+
+  document.getElementById('ventasIVA').textContent = formatCLP(ventasIVA);
+  document.getElementById('ventasNetas').textContent = formatCLP(ventasNetas);
+  document.getElementById('ventasDiarias').textContent = formatCLP(ventasDiarias);
+  document.getElementById('inversionMonto').textContent = formatCLP(inversion);
+  document.getElementById('arriendoMonto').textContent = formatCLP(arriendo);
+  document.getElementById('porcArriendo').textContent = Math.round(arriendoPct);
+  document.getElementById('remuneracionesMonto').textContent = formatCLP(remuneraciones);
+  document.getElementById('porcRemuneraciones').textContent = Math.round(remuneracionesPct);
+
+  document.getElementById('insumos').textContent = formatCLP(insumos);
+  document.getElementById('dieta').textContent = formatCLP(dieta);
+  document.getElementById('servicios').textContent = formatCLP(servicios);
+
+  // Mostrar el arriendo y remuneraciones en gastos calculados
+  document.getElementById('arriendoGasto').textContent = formatCLP(arriendo);
+  document.getElementById('remuneracionesGasto').textContent = formatCLP(remuneraciones);
+
+  // Mostrar el porcentaje de arriendo y remuneraciones sobre ventas
+  document.getElementById('porcArriendoGasto').textContent = Math.round(arriendoPct);
+  document.getElementById('porcRemuneracionesGasto').textContent = Math.round(remuneracionesPct);
+
+  // Mostrar el porcentaje de insumos, dieta y servicios
+  document.getElementById('porcInsumos').textContent = Math.round(insumosPctCalculated);
+  document.getElementById('porcDieta').textContent = Math.round(dietaPctCalculated);
+  document.getElementById('porcServicios').textContent = Math.round(serviciosPctCalculated);
+
+  // Mostrar el subtotal de los gastos calculados
+  document.getElementById('subtotalGastos').textContent = formatCLP(totalGastos);
+
+  document.getElementById('flujoMensual').textContent = formatCLP(flujoMensual);
+  document.getElementById('flujoAnual').textContent = formatCLP(flujoAnual);
+  document.getElementById('roi').textContent = Math.round(roi);
+  document.getElementById('payback').textContent = Math.round(payback);
+
+  document.getElementById('tablaEstacionalidad').innerHTML = rows;
+
+  document.querySelectorAll('.input-estacionalidad').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const index = parseInt(e.target.getAttribute('data-index'));
+      const valor = parseFloat(e.target.value) || 0;
+      estacionalidad[index] = valor;
+      calcular();
+    });
+  });
+}
+
+document.querySelectorAll('input').forEach(input => {
+  input.addEventListener('input', calcular);
+});
+
+calcular();
+</script>
+
+</body>
+</html>
