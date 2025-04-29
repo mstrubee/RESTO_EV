@@ -32,7 +32,7 @@
 </label>
 
 <label>Remodelación (en millones de CLP):
-  <input type="number" id="remodelacionBase" value="20">
+  <input type="number" id="remodelacionBase" value="40">
 </label>
 
 <p>Inversión total: $<span id="inversionMonto">-</span></p>
@@ -50,14 +50,17 @@
 <label>% Insumos y producción:
   <input type="number" id="insumosPct" value="38.5" step="0.1">
 </label>
+<p id="insumosMonto">Monto: $-</p> <!-- Mostrar monto debajo del input -->
 
 <label>% Dieta Directorio:
   <input type="number" id="dietaPct" value="20" step="0.1">
 </label>
+<p id="dietaMonto">Monto: $-</p> <!-- Mostrar monto debajo del input -->
 
 <label>% Cuentas de Servicios:
   <input type="number" id="serviciosPct" value="3" step="0.1">
 </label>
+<p id="serviciosMonto">Monto: $-</p> <!-- Mostrar monto debajo del input -->
 
 <h3>Gastos calculados</h3>
 <p>Arriendo mensual: $<span id="arriendoGasto">-</span> (<span id="porcArriendoGasto">-</span>% de ventas netas)</p>
@@ -119,6 +122,10 @@ function formatCLP(number) {
   return Number(Math.round(number)).toLocaleString('es-CL');
 }
 
+function formatMillions(number) {
+  return (number / 1_000_000).toFixed(1) + " MM$";
+}
+
 let grafico;
 
 function generarTablaEstacionalidad() {
@@ -169,6 +176,11 @@ function calcular() {
   const insumos = ventasNetas * (insumosPct / 100);
   const dieta = ventasNetas * (dietaPct / 100);
   const servicios = ventasNetas * (serviciosPct / 100);
+
+  // Mostrar montos debajo de los inputs de porcentaje
+  document.getElementById('insumosMonto').textContent = `Monto: $${formatCLP(insumos)}`;
+  document.getElementById('dietaMonto').textContent = `Monto: $${formatCLP(dieta)}`;
+  document.getElementById('serviciosMonto').textContent = `Monto: $${formatCLP(servicios)}`;
 
   const totalGastos = insumos + remuneraciones + dieta + servicios + arriendo;
   const flujoMensual = ventasNetas - totalGastos;
@@ -265,7 +277,20 @@ function calcular() {
     options: {
       responsive: true,
       plugins: {
-        legend: { display: false }
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(tooltipItem) {
+              const data = tooltipItem.raw;
+              const monthIndex = tooltipItem.dataIndex;
+              const estacionalidadPct = estacionalidad[monthIndex];
+              return [
+                `Estacionalidad: ${estacionalidadPct}%`,
+                `Monto: ${formatMillions(data)}`
+              ];
+            }
+          }
+        }
       }
     }
   });
