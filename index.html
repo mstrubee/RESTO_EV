@@ -121,6 +121,33 @@ function formatCLP(number) {
 
 let grafico;
 
+function generarTablaEstacionalidad() {
+  const tbody = document.getElementById('tablaEstacionalidad');
+  tbody.innerHTML = '';
+  estacionalidad.forEach((pct, i) => {
+    const dias = diasPorMes[i];
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${meses[i]}</td>
+      <td>${dias}</td>
+      <td><input type="number" min="0" max="150" value="${pct}" data-index="${i}" class="input-estacionalidad"></td>
+      <td class="ventas-dia"></td>
+      <td class="ventas-mes"></td>
+      <td class="flujo-dia"></td>
+      <td class="flujo-mes"></td>
+    `;
+    tbody.appendChild(row);
+  });
+
+  document.querySelectorAll('.input-estacionalidad').forEach(input => {
+    input.addEventListener('input', e => {
+      const index = parseInt(e.target.dataset.index);
+      estacionalidad[index] = parseFloat(e.target.value) || 0;
+      calcular(); // solo recalcula, no regenera la tabla
+    });
+  });
+}
+
 function calcular() {
   const ventasBase = parseFloat(document.getElementById('ventasBase').value) || 0;
   const derechoBase = parseFloat(document.getElementById('derechoBase').value) || 0;
@@ -147,7 +174,7 @@ function calcular() {
   const flujoMensual = ventasNetas - totalGastos;
 
   let flujoAnual = 0;
-  let rows = "";
+  let rows = document.querySelectorAll('#tablaEstacionalidad tr');
 
   let totalDias = 0, totalPct = 0, totalVentasDia = 0, totalVentasMes = 0;
   let totalFlujoDia = 0, totalFlujoMes = 0;
@@ -167,23 +194,19 @@ function calcular() {
 
     flujoAnual += flujoMes;
 
+    // Actualiza celdas existentes
+    const cells = rows[i].querySelectorAll('td');
+    cells[3].textContent = `$${formatCLP(ventasDia)}`;
+    cells[4].textContent = `$${formatCLP(ventasMes)}`;
+    cells[5].textContent = `$${formatCLP(flujoDia)}`;
+    cells[6].textContent = `$${formatCLP(flujoMes)}`;
+
     totalDias += dias;
     totalPct += pct;
     totalVentasDia += ventasDia;
     totalVentasMes += ventasMes;
     totalFlujoDia += flujoDia;
     totalFlujoMes += flujoMes;
-
-    rows += `
-      <tr>
-        <td>${meses[i]}</td>
-        <td>${dias}</td>
-        <td><input type="number" min="0" max="150" value="${pct}" data-index="${i}" class="input-estacionalidad"></td>
-        <td>$${formatCLP(ventasDia)}</td>
-        <td>$${formatCLP(ventasMes)}</td>
-        <td>$${formatCLP(flujoDia)}</td>
-        <td>$${formatCLP(flujoMes)}</td>
-      </tr>`;
   });
 
   // Mostrar resultados generales
@@ -220,50 +243,38 @@ function calcular() {
 
   document.getElementById('promDias').textContent = Math.round(totalDias / 12);
   document.getElementById('promPct').textContent = Math.round(totalPct / 12);
-  document.getElementById('promVentasDiarias').textContent = `$${formatCLP(totalVentasDia / 12)}`;
-  document.getElementById('promVentasMensuales').textContent = `$${formatCLP(totalVentasMes / 12)}`;
-  document.getElementById('promFlujoDiario').textContent = `$${formatCLP(totalFlujoDia / 12)}`;
-  document.getElementById('promFlujoMensual').textContent = `$${formatCLP(totalFlujoMes / 12)}`;
+  document.getElementById('promVentasDiarias').textContent = formatCLP(totalVentasDia / 12);
+  document.getElementById('promVentasMensuales').textContent = formatCLP(totalVentasMes / 12);
+  document.getElementById('promFlujoDiario').textContent = formatCLP(totalFlujoDia / 12);
+  document.getElementById('promFlujoMensual').textContent = formatCLP(totalFlujoMes / 12);
 
-  document.getElementById('tablaEstacionalidad').innerHTML = rows;
-
-  // Listeners para inputs
-  document.querySelectorAll('.input-estacionalidad').forEach(input => {
-    input.addEventListener('input', e => {
-      const index = parseInt(e.target.dataset.index);
-      estacionalidad[index] = parseFloat(e.target.value) || 0;
-      calcular();
-    });
-  });
-
-  // Actualizar gráfico
+  // Actualiza gráfico
   if (grafico) grafico.destroy();
   grafico = new Chart(document.getElementById('graficoEstacionalidad'), {
     type: 'bar',
     data: {
       labels: meses,
       datasets: [{
-        label: 'Estacionalidad (%)',
-        data: estacionalidad,
-        backgroundColor: 'rgba(54,162,235,0.5)',
-        borderColor: 'rgba(54,162,235,1)',
+        label: 'Flujo mensual ajustado por estacionalidad',
+        data: estacionalidad.map((pct, i) => (ventasNetas * (pct / 100)) - (totalGastos / 12)),
+        backgroundColor: '#4CAF50',
+        borderColor: '#388E3C',
         borderWidth: 1
       }]
     },
     options: {
       responsive: true,
-      scales: {
-        y: {
-          beginAtZero: true,
-          max: 120
-        }
+      plugins: {
+        legend: { display: false }
       }
     }
   });
 }
 
-document.querySelectorAll('input').forEach(input => input.addEventListener('input', calcular));
-calcular();
+window.onload = function() {
+  generarTablaEstacionalidad();
+  calcular();
+};
 </script>
 
 </body>
