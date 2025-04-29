@@ -18,13 +18,12 @@
 
 <h2>Evaluador de Restaurante</h2>
 
-<!-- Cambié el texto aquí para reflejar "Ventas Mensuales" -->
-<label>Ventas Mensuales (en millones de CLP):
+<label>Ventas Diarias (en millones de CLP):
   <input type="number" id="ventasBase" value="60">
 </label>
 <p>Ventas mensuales con IVA: $<span id="ventasIVA">-</span></p>
 <p>Ventas netas: $<span id="ventasNetas">-</span></p>
-<p>Ventas mensuales promedio: $<span id="ventasDiarias">-</span></p>
+<p>Ventas diarias promedio: $<span id="ventasDiarias">-</span></p>
 
 <label>Inversión inicial (en millones de CLP):
   <input type="number" id="inversionBase" value="120">
@@ -81,6 +80,13 @@
     </tr>
   </thead>
   <tbody id="tablaEstacionalidad"></tbody>
+  <tfoot>
+    <tr>
+      <td colspan="3"><strong>Promedio de Flujos Estacionales</strong></td>
+      <td id="promedioFlujoMensual">-</td>
+      <td>-</td>
+    </tr>
+  </tfoot>
 </table>
 
 <script>
@@ -119,6 +125,7 @@ function calcular() {
   const flujoMensual = ventasNetas - totalGastos;
 
   let flujoAnual = 0;
+  let flujoMensualTotal = 0; // Variable para calcular el total de flujos mensuales
   let rows = "";
 
   estacionalidad.forEach((pct, i) => {
@@ -135,6 +142,7 @@ function calcular() {
     const flujoDia = flujoMes / dias;
 
     flujoAnual += flujoMes;
+    flujoMensualTotal += flujoMes; // Sumar el flujo mensual total
 
     rows += `  
       <tr>
@@ -146,22 +154,18 @@ function calcular() {
       </tr>`;
   });
 
-  const roi = (flujoAnual / inversion) * 100;
-  const payback = inversion / flujoMensual;
-  const arriendoPct = (arriendo / ventasNetas) * 100;
-  const remuneracionesPct = (remuneraciones / ventasNetas) * 100;
-  const insumosPctCalculated = (insumos / ventasNetas) * 100;
-  const dietaPctCalculated = (dieta / ventasNetas) * 100;
-  const serviciosPctCalculated = (servicios / ventasNetas) * 100;
+  // Calcular promedio de los flujos mensuales ajustados
+  const promedioFlujoMensual = flujoMensualTotal / estacionalidad.length;
 
+  // Mostrar resultados en la tabla
   document.getElementById('ventasIVA').textContent = formatCLP(ventasIVA);
   document.getElementById('ventasNetas').textContent = formatCLP(ventasNetas);
   document.getElementById('ventasDiarias').textContent = formatCLP(ventasDiarias);
   document.getElementById('inversionMonto').textContent = formatCLP(inversion);
   document.getElementById('arriendoMonto').textContent = formatCLP(arriendo);
-  document.getElementById('porcArriendo').textContent = Math.round(arriendoPct);
+  document.getElementById('porcArriendo').textContent = Math.round((arriendo / ventasNetas) * 100);
   document.getElementById('remuneracionesMonto').textContent = formatCLP(remuneraciones);
-  document.getElementById('porcRemuneraciones').textContent = Math.round(remuneracionesPct);
+  document.getElementById('porcRemuneraciones').textContent = Math.round((remuneraciones / ventasNetas) * 100);
 
   document.getElementById('insumos').textContent = formatCLP(insumos);
   document.getElementById('dieta').textContent = formatCLP(dieta);
@@ -172,24 +176,33 @@ function calcular() {
   document.getElementById('remuneracionesGasto').textContent = formatCLP(remuneraciones);
 
   // Mostrar el porcentaje de arriendo y remuneraciones sobre ventas
-  document.getElementById('porcArriendoGasto').textContent = Math.round(arriendoPct);
-  document.getElementById('porcRemuneracionesGasto').textContent = Math.round(remuneracionesPct);
+  document.getElementById('porcArriendoGasto').textContent = Math.round((arriendo / ventasNetas) * 100);
+  document.getElementById('porcRemuneracionesGasto').textContent = Math.round((remuneraciones / ventasNetas) * 100);
 
   // Mostrar el porcentaje de insumos, dieta y servicios
-  document.getElementById('porcInsumos').textContent = Math.round(insumosPctCalculated);
-  document.getElementById('porcDieta').textContent = Math.round(dietaPctCalculated);
-  document.getElementById('porcServicios').textContent = Math.round(serviciosPctCalculated);
+  document.getElementById('porcInsumos').textContent = Math.round((insumos / ventasNetas) * 100);
+  document.getElementById('porcDieta').textContent = Math.round((dieta / ventasNetas) * 100);
+  document.getElementById('porcServicios').textContent = Math.round((servicios / ventasNetas) * 100);
 
   // Mostrar el subtotal de los gastos calculados
   document.getElementById('subtotalGastos').textContent = formatCLP(totalGastos);
 
   document.getElementById('flujoMensual').textContent = formatCLP(flujoMensual);
   document.getElementById('flujoAnual').textContent = formatCLP(flujoAnual);
+
+  // Mostrar el ROI y Payback
+  const roi = (flujoAnual / inversion) * 100;
+  const payback = inversion / flujoMensual;
   document.getElementById('roi').textContent = Math.round(roi);
   document.getElementById('payback').textContent = Math.round(payback);
 
+  // Mostrar el promedio de los flujos mensuales
+  document.getElementById('promedioFlujoMensual').textContent = `$${formatCLP(promedioFlujoMensual)}`;
+
+  // Actualizar tabla de estacionalidad
   document.getElementById('tablaEstacionalidad').innerHTML = rows;
 
+  // Agregar eventos a los inputs de estacionalidad
   document.querySelectorAll('.input-estacionalidad').forEach(input => {
     input.addEventListener('input', (e) => {
       const index = parseInt(e.target.getAttribute('data-index'));
