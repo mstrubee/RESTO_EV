@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -72,7 +72,7 @@
 <p>Retorno de inversión (ROI): <span id="roi">-</span>%</p>
 <p>Payback: <span id="payback">-</span> meses</p>
 
-<h3>Estacionalidad (editable)</h3>
+<h3>Estacionalidad</h3>
 <table>
   <thead>
     <tr>
@@ -98,6 +98,11 @@
     </tr>
   </tfoot>
 </table>
+
+<!-- Nueva sección añadida para ROI y Payback ajustados por estacionalidad -->
+<h3>ROI y Payback ajustados por estacionalidad</h3>
+<p>ROI ajustado: <span id="roiEstacionalidad">-</span>%</p>
+<p>Payback ajustado: <span id="paybackEstacionalidad">-</span> meses</p>
 
 <script>
 const estacionalidad = [84, 50, 92, 94, 84, 95, 99, 100, 60, 98, 92, 93];
@@ -214,6 +219,14 @@ function calcular() {
   document.getElementById('promVentasMensuales').textContent = `$${formatCLP(totalVentasMes / totalMeses)}`;
   document.getElementById('promFlujoDiario').textContent = `$${formatCLP(totalFlujoDia / totalMeses)}`;
   document.getElementById('promFlujoMensual').textContent = `$${formatCLP(totalFlujoMes / totalMeses)}`;
+
+  // ROI y Payback ajustado por estacionalidad
+  const roiEstacionalidad = (flujoAnual / inversion) * 100;
+  const promedioFlujoMensualEstacional = flujoAnual / 12;
+  const paybackEstacionalidad = inversion / promedioFlujoMensualEstacional;
+
+  document.getElementById('roiEstacionalidad').textContent = Math.round(roiEstacionalidad);
+  document.getElementById('paybackEstacionalidad').textContent = Math.round(paybackEstacionalidad);
 
   document.getElementById('tablaEstacionalidad').innerHTML = rows;
 
