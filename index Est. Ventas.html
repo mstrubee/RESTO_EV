@@ -1,0 +1,88 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Evaluador de Ventas - Restaurante</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 20px;
+      background-color: #f9f9f9;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1 { text-align: center; color: #333; }
+    label { display: block; margin-top: 15px; font-weight: bold; }
+    input {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      box-sizing: border-box;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 10px;
+      background: #e6ffe6;
+      border: 1px solid #b3ffb3;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Modelo de Evaluación de Ventas</h1>
+  
+  <label for="dias">Número de días operativos:</label>
+  <input type="number" id="dias" value="21">
+
+  <label for="comensales">Número de comensales por llenado:</label>
+  <input type="number" id="comensales" value="70">
+
+  <label for="ticket">Ticket promedio (CLP):</label>
+  <input type="number" id="ticket" value="12000">
+
+  <label for="llenados">Llenados totales por día:</label>
+  <input type="number" id="llenados" value="2">
+
+  <div class="result" id="resultados"></div>
+
+  <script>
+    function formatCLP(value) {
+      return value.toLocaleString('es-CL', { maximumFractionDigits: 0 });
+    }
+
+    function calcularVentas() {
+      const dias = parseInt(document.getElementById('dias').value) || 0;
+      const comensales = parseInt(document.getElementById('comensales').value) || 0;
+      const ticket = parseInt(document.getElementById('ticket').value) || 0;
+      const llenados = parseInt(document.getElementById('llenados').value) || 0;
+
+      const comensalesDia = comensales * llenados;
+      const ventasBrutasDia = comensalesDia * ticket;
+      const ventasNetasDia = ventasBrutasDia / 1.19;
+
+      const ventasBrutasTotales = ventasBrutasDia * dias;
+      const ventasNetasTotales = ventasNetasDia * dias;
+
+      document.getElementById('resultados').innerHTML = `
+        <strong>Resultados:</strong><br>
+        Comensales diarios: ${formatCLP(comensalesDia)}<br>
+        Ventas diarias brutas: $${formatCLP(ventasBrutasDia)}<br>
+        Ventas diarias netas: $${formatCLP(ventasNetasDia)}<br><br>
+        Ventas totales brutas: $${formatCLP(ventasBrutasTotales)}<br>
+        Ventas totales netas: $${formatCLP(ventasNetasTotales)}
+      `;
+    }
+
+    // Escuchar cambios en todos los campos
+    document.querySelectorAll('input').forEach(input => {
+      input.addEventListener('input', calcularVentas);
+    });
+
+    // Calcular al cargar
+    window.addEventListener('DOMContentLoaded', calcularVentas);
+  </script>
+</body>
+</html>
