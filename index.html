@@ -12,7 +12,9 @@
     th, td { border: 1px solid #ccc; padding: 8px; text-align: right; }
     th { background-color: #f2f2f2; }
     td input { width: 60px; }
+    canvas { margin-top: 40px; }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
@@ -99,10 +101,13 @@
   </tfoot>
 </table>
 
-<!-- Nueva sección añadida para ROI y Payback ajustados por estacionalidad -->
-<h3>ROI y Payback ajustados por estacionalidad</h3>
-<p>ROI ajustado: <span id="roiEstacionalidad">-</span>%</p>
-<p>Payback ajustado: <span id="paybackEstacionalidad">-</span> meses</p>
+<!-- ROI y Payback ajustado por estacionalidad -->
+<h3>Resultados ajustados por estacionalidad</h3>
+<p>ROI con estacionalidad: <span id="roiEstacional">-</span>%</p>
+<p>Payback con estacionalidad: <span id="paybackEstacional">-</span> meses</p>
+
+<!-- Gráfico de estacionalidad -->
+<canvas id="graficoEstacionalidad"></canvas>
 
 <script>
 const estacionalidad = [84, 50, 92, 94, 84, 95, 99, 100, 60, 98, 92, 93];
@@ -113,6 +118,8 @@ const diasPorMes = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 function formatCLP(number) {
   return Number(Math.round(number)).toLocaleString('es-CL');
 }
+
+let grafico;
 
 function calcular() {
   const ventasBase = parseFloat(document.getElementById('ventasBase').value) || 0;
@@ -142,7 +149,6 @@ function calcular() {
   let flujoAnual = 0;
   let rows = "";
 
-  // Acumuladores para promedios
   let totalDias = 0, totalPct = 0, totalVentasDia = 0, totalVentasMes = 0;
   let totalFlujoDia = 0, totalFlujoMes = 0;
 
@@ -180,16 +186,16 @@ function calcular() {
       </tr>`;
   });
 
-  // Mostrar resultados
+  // Mostrar resultados generales
   document.getElementById('ventasIVA').textContent = formatCLP(ventasIVA);
   document.getElementById('ventasNetas').textContent = formatCLP(ventasNetas);
   document.getElementById('ventasDiarias').textContent = formatCLP(ventasDiarias);
   document.getElementById('inversionMonto').textContent = formatCLP(inversion);
   document.getElementById('arriendoMonto').textContent = formatCLP(arriendo);
-  document.getElementById('porcArriendo').textContent = Math.round((arriendo / ventasNetas) * 100);
   document.getElementById('remuneracionesMonto').textContent = formatCLP(remuneraciones);
-  document.getElementById('porcRemuneraciones').textContent = Math.round((remuneraciones / ventasNetas) * 100);
 
+  document.getElementById('porcArriendo').textContent = Math.round((arriendo / ventasNetas) * 100);
+  document.getElementById('porcRemuneraciones').textContent = Math.round((remuneraciones / ventasNetas) * 100);
   document.getElementById('insumos').textContent = formatCLP(insumos);
   document.getElementById('dieta').textContent = formatCLP(dieta);
   document.getElementById('servicios').textContent = formatCLP(servicios);
@@ -206,44 +212,57 @@ function calcular() {
   document.getElementById('flujoMensual').textContent = formatCLP(flujoMensual);
   document.getElementById('flujoAnual').textContent = formatCLP(flujoAnual);
 
-  const roi = (flujoAnual / inversion) * 100;
-  const payback = inversion / flujoMensual;
-  document.getElementById('roi').textContent = Math.round(roi);
-  document.getElementById('payback').textContent = Math.round(payback);
+  document.getElementById('roi').textContent = Math.round((flujoAnual / inversion) * 100);
+  document.getElementById('payback').textContent = Math.round(inversion / flujoMensual);
 
-  // Promedios
-  const totalMeses = estacionalidad.length;
-  document.getElementById('promDias').textContent = Math.round(totalDias / totalMeses);
-  document.getElementById('promPct').textContent = Math.round(totalPct / totalMeses);
-  document.getElementById('promVentasDiarias').textContent = `$${formatCLP(totalVentasDia / totalMeses)}`;
-  document.getElementById('promVentasMensuales').textContent = `$${formatCLP(totalVentasMes / totalMeses)}`;
-  document.getElementById('promFlujoDiario').textContent = `$${formatCLP(totalFlujoDia / totalMeses)}`;
-  document.getElementById('promFlujoMensual').textContent = `$${formatCLP(totalFlujoMes / totalMeses)}`;
+  document.getElementById('roiEstacional').textContent = Math.round((flujoAnual / inversion) * 100);
+  document.getElementById('paybackEstacional').textContent = Math.round(inversion / (flujoAnual / 12));
 
-  // ROI y Payback ajustado por estacionalidad
-  const roiEstacionalidad = (flujoAnual / inversion) * 100;
-  const promedioFlujoMensualEstacional = flujoAnual / 12;
-  const paybackEstacionalidad = inversion / promedioFlujoMensualEstacional;
-
-  document.getElementById('roiEstacionalidad').textContent = Math.round(roiEstacionalidad);
-  document.getElementById('paybackEstacionalidad').textContent = Math.round(paybackEstacionalidad);
+  document.getElementById('promDias').textContent = Math.round(totalDias / 12);
+  document.getElementById('promPct').textContent = Math.round(totalPct / 12);
+  document.getElementById('promVentasDiarias').textContent = `$${formatCLP(totalVentasDia / 12)}`;
+  document.getElementById('promVentasMensuales').textContent = `$${formatCLP(totalVentasMes / 12)}`;
+  document.getElementById('promFlujoDiario').textContent = `$${formatCLP(totalFlujoDia / 12)}`;
+  document.getElementById('promFlujoMensual').textContent = `$${formatCLP(totalFlujoMes / 12)}`;
 
   document.getElementById('tablaEstacionalidad').innerHTML = rows;
 
+  // Listeners para inputs
   document.querySelectorAll('.input-estacionalidad').forEach(input => {
-    input.addEventListener('input', (e) => {
-      const index = parseInt(e.target.getAttribute('data-index'));
-      const valor = parseFloat(e.target.value) || 0;
-      estacionalidad[index] = valor;
+    input.addEventListener('input', e => {
+      const index = parseInt(e.target.dataset.index);
+      estacionalidad[index] = parseFloat(e.target.value) || 0;
       calcular();
     });
   });
+
+  // Actualizar gráfico
+  if (grafico) grafico.destroy();
+  grafico = new Chart(document.getElementById('graficoEstacionalidad'), {
+    type: 'bar',
+    data: {
+      labels: meses,
+      datasets: [{
+        label: 'Estacionalidad (%)',
+        data: estacionalidad,
+        backgroundColor: 'rgba(54,162,235,0.5)',
+        borderColor: 'rgba(54,162,235,1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 120
+        }
+      }
+    }
+  });
 }
 
-document.querySelectorAll('input').forEach(input => {
-  input.addEventListener('input', calcular);
-});
-
+document.querySelectorAll('input').forEach(input => input.addEventListener('input', calcular));
 calcular();
 </script>
 
