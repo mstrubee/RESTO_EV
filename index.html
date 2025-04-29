@@ -50,17 +50,17 @@
 <label>% Insumos y producción:
   <input type="number" id="insumosPct" value="38.5" step="0.1">
 </label>
-<p id="insumosMonto">Monto: $-</p> <!-- Mostrar monto debajo del input -->
+<p id="insumosMonto">Monto: $-</p>
 
 <label>% Dieta Directorio:
   <input type="number" id="dietaPct" value="20" step="0.1">
 </label>
-<p id="dietaMonto">Monto: $-</p> <!-- Mostrar monto debajo del input -->
+<p id="dietaMonto">Monto: $-</p>
 
 <label>% Cuentas de Servicios:
   <input type="number" id="serviciosPct" value="3" step="0.1">
 </label>
-<p id="serviciosMonto">Monto: $-</p> <!-- Mostrar monto debajo del input -->
+<p id="serviciosMonto">Monto: $-</p>
 
 <h3>Gastos calculados</h3>
 <p>Arriendo mensual: $<span id="arriendoGasto">-</span> (<span id="porcArriendoGasto">-</span>% de ventas netas)</p>
@@ -104,12 +104,10 @@
   </tfoot>
 </table>
 
-<!-- ROI y Payback ajustado por estacionalidad -->
 <h3>Resultados ajustados por estacionalidad</h3>
 <p>ROI con estacionalidad: <span id="roiEstacional">-</span>%</p>
 <p>Payback con estacionalidad: <span id="paybackEstacional">-</span> meses</p>
 
-<!-- Gráfico de estacionalidad -->
 <canvas id="graficoEstacionalidad"></canvas>
 
 <script>
@@ -150,7 +148,7 @@ function generarTablaEstacionalidad() {
     input.addEventListener('input', e => {
       const index = parseInt(e.target.dataset.index);
       estacionalidad[index] = parseFloat(e.target.value) || 0;
-      calcular(); // solo recalcula, no regenera la tabla
+      calcular();
     });
   });
 }
@@ -177,7 +175,6 @@ function calcular() {
   const dieta = ventasNetas * (dietaPct / 100);
   const servicios = ventasNetas * (serviciosPct / 100);
 
-  // Mostrar montos debajo de los inputs de porcentaje
   document.getElementById('insumosMonto').textContent = `Monto: $${formatCLP(insumos)}`;
   document.getElementById('dietaMonto').textContent = `Monto: $${formatCLP(dieta)}`;
   document.getElementById('serviciosMonto').textContent = `Monto: $${formatCLP(servicios)}`;
@@ -206,7 +203,6 @@ function calcular() {
 
     flujoAnual += flujoMes;
 
-    // Actualiza celdas existentes
     const cells = rows[i].querySelectorAll('td');
     cells[3].textContent = `$${formatCLP(ventasDia)}`;
     cells[4].textContent = `$${formatCLP(ventasMes)}`;
@@ -221,7 +217,6 @@ function calcular() {
     totalFlujoMes += flujoMes;
   });
 
-  // Mostrar resultados generales
   document.getElementById('ventasIVA').textContent = formatCLP(ventasIVA);
   document.getElementById('ventasNetas').textContent = formatCLP(ventasNetas);
   document.getElementById('ventasDiarias').textContent = formatCLP(ventasDiarias);
@@ -231,6 +226,7 @@ function calcular() {
 
   document.getElementById('porcArriendo').textContent = Math.round((arriendo / ventasNetas) * 100);
   document.getElementById('porcRemuneraciones').textContent = Math.round((remuneraciones / ventasNetas) * 100);
+
   document.getElementById('insumos').textContent = formatCLP(insumos);
   document.getElementById('dieta').textContent = formatCLP(dieta);
   document.getElementById('servicios').textContent = formatCLP(servicios);
@@ -260,15 +256,23 @@ function calcular() {
   document.getElementById('promFlujoDiario').textContent = formatCLP(totalFlujoDia / 12);
   document.getElementById('promFlujoMensual').textContent = formatCLP(totalFlujoMes / 12);
 
-  // Actualiza gráfico
   if (grafico) grafico.destroy();
   grafico = new Chart(document.getElementById('graficoEstacionalidad'), {
     type: 'bar',
     data: {
       labels: meses,
       datasets: [{
-        label: 'Flujo mensual ajustado por estacionalidad',
-        data: estacionalidad.map((pct, i) => (ventasNetas * (pct / 100)) - (totalGastos / 12)),
+        label: 'Flujo mensual ajustado',
+        data: estacionalidad.map((pct, i) => {
+          const ventasMes = ventasNetas * (pct / 100);
+          return ventasMes - (
+            (ventasMes * (insumosPct / 100)) +
+            remuneraciones +
+            (ventasMes * (dietaPct / 100)) +
+            (ventasMes * (serviciosPct / 100)) +
+            arriendo
+          );
+        }),
         backgroundColor: '#4CAF50',
         borderColor: '#388E3C',
         borderWidth: 1
@@ -284,10 +288,7 @@ function calcular() {
               const data = tooltipItem.raw;
               const monthIndex = tooltipItem.dataIndex;
               const estacionalidadPct = estacionalidad[monthIndex];
-              return [
-                `Estacionalidad: ${estacionalidadPct}%`,
-                `Monto: ${formatMillions(data)}`
-              ];
+              return [`Estacionalidad: ${estacionalidadPct}%`, `Monto: ${formatMillions(data)}`];
             }
           }
         }
@@ -295,6 +296,10 @@ function calcular() {
     }
   });
 }
+
+document.querySelectorAll('input').forEach(input => {
+  input.addEventListener('input', calcular);
+});
 
 window.onload = function() {
   generarTablaEstacionalidad();
